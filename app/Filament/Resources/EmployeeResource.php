@@ -4,7 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\EmployeeResource\Pages;
 use App\Filament\Resources\EmployeeResource\RelationManagers;
+use App\Models\City;
+use App\Models\Country;
 use App\Models\Employee;
+use App\Models\State;
 use Filament\Forms;
 use Filament\Forms\Components\Card;
 use Filament\Forms\Components\DatePicker;
@@ -15,6 +18,7 @@ use Filament\Resources\Resource;
 use Filament\Resources\Table;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -22,7 +26,7 @@ class EmployeeResource extends Resource
 {
     protected static ?string $model = Employee::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-collection';
+    protected static ?string $navigationIcon = 'heroicon-o-briefcase';
 
     public static function form(Form $form): Form
     {
@@ -31,17 +35,62 @@ class EmployeeResource extends Resource
                 Card::make()
                 ->schema([
                     Select::make('country_id')
-                        ->relationship('country', 'name')->required(),
+                        ->label('Country')
+                        ->options(Country::all()->pluck(
+                            'name',
+                            'id'
+                        )
+                        ->toArray())
+                        ->required()
+                        ->reactive()
+                        ->afterStateUpdated(fn (callable $set) => $set('state_id', null)),
                     Select::make('state_id')
-                        ->relationship('state', 'name')->required(),
-                    Select::make('city_id')
-                        ->relationship('city', 'name')->required(),
+                        ->label('State')
+                        ->required()
+                        ->options(function (callable $get){
+                            $country = Country::find($get('country_id'));
+                            if (!$country) {
+                                return State::all()->pluck
+                                (
+                                    'name',
+                                    'id'
+                                );
+                            }
+                            return $country->states->pluck
+                            (
+                                'name',
+                                'id'
+                            );
+                        })
+                        ->required()
+                        ->reactive()
+                        ->afterStateUpdated(fn (callable $set) => $set('city_id', null)),
+                        Select::make('city_id')
+                        ->label('City')
+                        ->options(function (callable $get){
+                            $state = State::find($get('state_id'));
+                            if (!$state) {
+                                return City::all()->pluck
+                                (
+                                    'name',
+                                    'id'
+                                );
+                            }
+                            return $state->cities->pluck
+                            (
+                                'name',
+                                'id'
+                            );
+                        })
+                        ->required()
+                        ->reactive()
+                        ->afterStateUpdated(fn (callable $set) => $set('city_id', null)),
                     Select::make('department_id')
                         ->relationship('department', 'name')->required(),
-                    TextInput::make('first_name')->required(),
-                    TextInput::make('last_name')->required(),
-                    TextInput::make('address')->required(),
-                    TextInput::make('zip_code')->required(),
+                    TextInput::make('first_name')->required()->maxLength(255),
+                    TextInput::make('last_name')->required()->maxLength(255),
+                    TextInput::make('address')->required()->maxLength(255),
+                    TextInput::make('zip_code')->required()->maxLength(10),
                     DatePicker::make('birth_date')->required(),
                     DatePicker::make('date_hired')->required(),
                 ])
@@ -54,11 +103,13 @@ class EmployeeResource extends Resource
             ->columns([
                 TextColumn::make('id')->sortable(),
                 TextColumn::make('first_name')->sortable()->searchable(),
-                TextColumn::make('country.name')->sortable(),
-                TextColumn::make('created_at')->dateTime()
+                TextColumn::make('last_name')->sortable()->searchable(),
+                TextColumn::make('department.name')->sortable(),
+                TextColumn::make('date_hired')->date(),
+                TextColumn::make('created_at')->dateTime(),
             ])
             ->filters([
-                //
+                SelectFilter::make('department')->relationship('department', 'name')
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
