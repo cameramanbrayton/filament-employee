@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\EmployeeResource\Pages;
 use App\Filament\Resources\EmployeeResource\RelationManagers;
+use App\Filament\Resources\EmployeeResource\Widgets\EmployeeStatsOverview;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Employee;
@@ -62,10 +63,9 @@ class EmployeeResource extends Resource
                                 'id'
                             );
                         })
-                        ->required()
                         ->reactive()
                         ->afterStateUpdated(fn (callable $set) => $set('city_id', null)),
-                        Select::make('city_id')
+                    Select::make('city_id')
                         ->label('City')
                         ->options(function (callable $get){
                             $state = State::find($get('state_id'));
@@ -83,8 +83,7 @@ class EmployeeResource extends Resource
                             );
                         })
                         ->required()
-                        ->reactive()
-                        ->afterStateUpdated(fn (callable $set) => $set('city_id', null)),
+                        ->reactive(),
                     Select::make('department_id')
                         ->relationship('department', 'name')->required(),
                     TextInput::make('first_name')->required()->maxLength(255),
@@ -123,6 +122,13 @@ class EmployeeResource extends Resource
     {
         return [
             //
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            EmployeeStatsOverview::class,
         ];
     }
     
